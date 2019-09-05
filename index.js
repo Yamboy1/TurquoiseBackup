@@ -13,6 +13,29 @@ await db.connect(config.r)
 let profiles = await db.getAllProfiles()
 const tokengen = require('token-generator')(config.tg)
 
+const fetch = require("node-fetch");
+
+const db2 = new Database();
+await db2.connect(config.r2);
+
+app.get("/trello/post/:token", async (req, res) => {
+    console.log("here");
+    if (!req.params.token) throw Error("please give a toekn");
+    const ticket = req.header("authorization");
+    console.log(ticket);
+    const details = await db.getTicket(ticket);
+    const result = await (
+      fetch(`https://api.trello.com/1/tokens/${req.params.token}?token=${req.params.token}&key=8ccd41c2d23f40cbdc55044c9b42c26d`)
+        .then(res => res.json())
+        .then(json => json.idMember)
+    ).catch(() => new Error("coudn't get trello user id"))
+    console.log(result);
+    console.log(details);
+    db2.addToken(details.user, req.params.token, result);
+    res.send('POST request to the homepage')
+});
+
+
 app.use(expressVue.init({
     rootPath: path.join(__dirname, 'views'),
     vue: {
@@ -37,6 +60,8 @@ app.use(expressVue.init({
     }
 }));
 
+
+
 app.use((req, res, next) => {
     res.displayError = (code = 404, error = 'Not Found') => res.status(code).renderVue('404',
       { error: `${code} - ${error}` },
@@ -53,10 +78,11 @@ app.use((req, res, next) => {
 app.use(express.static(__dirname+'/public'))
 app.use('/connect', require('./routes/connect'))
 app.use('/endpoints', require('./routes/endpoints'))
-app.use('/*', require('./routes/404'))
+app.use('*', require('./routes/404'))
 
-app.listen(429, () => {
-  console.info('Running on port 429')
+
+app.listen(81, () => {
+  console.info('Running on port 81')
 })
 
 })()
